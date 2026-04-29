@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EPUB Reader</title>
+
+  <script src="./highlight.min.js"></script>
+  <script src="./jszip.min.js"></script>
+  <script src="./epub.js"></script>
+
+  <link rel="stylesheet" type="text/css" href="example.css">
+</head>
+
+<body>
+  <input type="file" id="input" accept="application/epub+zip">
+  <label class="open-label" for="input">打开epub文件</label>
+  <a id="prev" href="#prev" class="navlink"></a>
+  <div id="viewer" class="scrolled"></div>
+  <a id="next" href="#next" class="navlink"></a>
+  <div id="toc"></div>
+  <div id="menu"></div>
+  <script>
+    var storeKey;
+
+    document.getElementById("input").addEventListener('change', function(e) {
+      var file = e.target.files[0];
+      storeKey = "currentSectionIndex-" + file.name;
+      var reader = new FileReader();
+      reader.onload = openBook;
+      reader.readAsArrayBuffer(file);
+    });
+
+    function openBook(e) {
+      var next = document.getElementById("next");
+      var prev = document.getElementById("prev");
+
+      var book = ePub(e.target.result, { encoding: "binary" });
+      var rendition = book.renderTo("viewer", {
+        flow: "scrolled-doc"
+      });
+
+      rendition.display(localStorage.getItem(storeKey) || void 0);
+
+      document.querySelector(".open-label").remove();
+
+      var next = document.getElementById("next");
+      next.addEventListener("click", function(e) {
+        rendition.next();
+        e.preventDefault();
+      }, false);
+
+      var prev = document.getElementById("prev");
+      prev.addEventListener("click", function(e) {
+        rendition.prev();
+        e.preventDefault();
+      }, false);
+
+      rendition.on("relocated", function(location) {
+        // console.log(location);
+      });
+
+      rendition.on("started", function() {
+        const title = document.createElement("h3");
+        title.textContent = book.packaging?.metadata?.title || "Unknown Title";
+        document.getElementById("toc").appendChild(title);
+
+        book.navigation?.toc?.forEach(function(chapter) {
+          var link = document.createElement("a");
+          link.textContent = chapter.label;
+          link.href = chapter.href;
+          link.title = chapter.label;
+          link.addEventListener("click", function(e) {
+            rendition.display(chapter.href);
+            e.preventDefault();
+          }, false);
+          document.getElementById("toc").appendChild(link);
+        });
+      });
+
+      rendition.on("rendered", function(section) {
+        localStorage.setItem(storeKey, section.href);
+
+        var nextSection = section.next();
+        var prevSection = section.prev();
+
+        if (nextSection) {
+          var nextNav = book.navigation.get(nextSection.href);
+
+          if (nextNav) {
+            nextLabel = nextNav.label;
+          } else {
+            nextLabel = "next";
+          }
+
+          next.textContent = nextLabel + " »";
+        } else {
+          next.textContent = "";
+        }
+
+        if (prevSection) {
+          var prevNav = book.navigation.get(prevSection.href);
+
+          if (prevNav) {
+            prevLabel = prevNav.label;
+          } else {
+            prevLabel = "previous";
+          }
+
+          prev.textContent = "« " + prevLabel;
+        } else {
+          prev.textContent = "";
+        }
+      });
+
+      rendition.hooks.content.register(function(contents, view) {
+        // 查找所有 pre 标签内的文本节点
+        const pres = contents.document.querySelectorAll("pre");
+
+        pres.forEach(pre => {
+          // 如果 pre 内没有 code 标签，则包裹一层
+          if (!pre.querySelector("code")) {
+            const code = contents.document.createElement("code");
+            code.innerHTML = pre.innerHTML;
+            hljs.highlightElement(code);
+            pre.innerHTML = "";
+            pre.appendChild(code);
+          } else {
+            hljs.highlightElement(pre.querySelector("code"));
+          }
+        });
+
+        const headings = contents.document.querySelectorAll("h1, h2, h3");
+        document.getElementById("menu").innerHTML = '';
+        headings.forEach(h => {
+          const header = document.createElement("div");
+          header.className = h.tagName.toLowerCase();
+          header.textContent = h.textContent;
+          header.title = h.textContent;
+          header.addEventListener("click", function() {
+            h.scrollIntoView();
+          });
+          document.getElementById("menu").appendChild(header);
+        });
+      });
+
+      rendition.themes.register("./themes.css")
+    }
+  </script>
+</body>
+
+</html>
