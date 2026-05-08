@@ -112,6 +112,19 @@
         } else {
           prev.textContent = "";
         }
+
+        // 调整真实高度
+        setTimeout(() => {
+          const height = document.querySelector(".epub-view > iframe").contentDocument.documentElement.scrollHeight + 'px'
+          document.querySelector(".epub-view > iframe").style.height = height
+          document.querySelector(".epub-view").style.height = height
+        }, 100);
+        // 兜底
+        setTimeout(() => {
+          const height = document.querySelector(".epub-view > iframe").contentDocument.documentElement.scrollHeight + 'px'
+          document.querySelector(".epub-view > iframe").style.height = height
+          document.querySelector(".epub-view").style.height = height
+        }, 1000);
       });
 
       rendition.hooks.content.register(function(contents, view) {
@@ -126,7 +139,7 @@
             hljs.highlightElement(code);
             pre.innerHTML = "";
             pre.appendChild(code);
-          } else {
+          } else if (pre.querySelectorAll("code").length === 1) {
             hljs.highlightElement(pre.querySelector("code"));
           }
         });
