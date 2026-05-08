@@ -114,17 +114,18 @@
         }
 
         // 调整真实高度
-        setTimeout(() => {
-          const height = document.querySelector(".epub-view > iframe").contentDocument.documentElement.scrollHeight + 'px'
-          document.querySelector(".epub-view > iframe").style.height = height
-          document.querySelector(".epub-view").style.height = height
-        }, 100);
-        // 兜底
-        setTimeout(() => {
-          const height = document.querySelector(".epub-view > iframe").contentDocument.documentElement.scrollHeight + 'px'
-          document.querySelector(".epub-view > iframe").style.height = height
-          document.querySelector(".epub-view").style.height = height
-        }, 1000);
+        const resizeObserver = new ResizeObserver(entries => {
+          for (let entry of entries) {
+            if (entry.contentRect.height > 0) {
+              const height = document.querySelector(".epub-view > iframe").contentDocument.documentElement.scrollHeight + 'px'
+              console.log(`元素高度变化为：${entry.contentRect.height}px`, height);
+              document.querySelector(".epub-view > iframe").style.height = height
+              document.querySelector(".epub-view").style.height = height
+            }
+          }
+        });
+
+        resizeObserver.observe(document.querySelector(".epub-view > iframe"));
       });
 
       rendition.hooks.content.register(function(contents, view) {
